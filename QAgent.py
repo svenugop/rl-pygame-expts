@@ -1,6 +1,7 @@
 import util
 import random
 import numpy as np
+import math
 
 class QLearningAgent():
 
@@ -9,11 +10,13 @@ class QLearningAgent():
         self.y = 60
 
         self.qVals = util.Counter()
-        self.state = [-20, -20]
+
+        # The state has 4 elements 'x-too-much-to-the-left', 'x-too-much-to-the-right', 'y-too-much-above', 'y-too-much-below'
+        self.state = 'origin'
 
         self.discount = 0.05
         self.alpha = 0.7
-        self.epsilon = 0.1
+        self.epsilon = 0.5
 
     def getPosition(self):
         return np.array([self.x,self.y])
@@ -23,7 +26,11 @@ class QLearningAgent():
         # Get all possible actions to take from this state
         actions = self.getPossibleActions()
 
-        self.state = self.getPosition() - leaderPos
+        currTargetDistance = self.getPosition() - leaderPos
+        # currTargetDistance = math.fabs(currTargetDistance[0])
+        currTargetDistance = math.sqrt(currTargetDistance[0]*currTargetDistance[0] + currTargetDistance[1]*currTargetDistance[1])
+        print "currTargetDistance = {}".format(currTargetDistance)
+
         # With some randomness either choose a random action or the action that results in the maximum Q value (exploration vs. exploitation)
         if (util.flipCoin(self.epsilon)):
             action = random.choice(actions)
@@ -32,16 +39,24 @@ class QLearningAgent():
 
 
         if (action == 'move-left'):
-            self.x -= 1
+            self.x -= 3
         elif (action == 'move-right'):
-            self.x += 1
+            self.x += 3
         elif (action == 'move-up'):
-            self.y -= 1
+            self.y -= 3
         elif (action == 'move-down'):
-            self.y += 1
+            self.y += 3
 
+        nextTargetDistance = self.getPosition() - leaderPos
+        # nextTargetDistance = math.fabs(nextTargetDistance[0])
+        nextTargetDistance = math.sqrt(nextTargetDistance[0]*nextTargetDistance[0] + nextTargetDistance[1]*nextTargetDistance[1])
+        print "nextTargetDistance = {}".format(nextTargetDistance)
 
-        nextState = self.getPosition() - leaderPos
+        if (nextTargetDistance < currTargetDistance):
+            nextState = 'closer'
+        else:
+            nextState = 'farther'
+
 
         # Compute reward for taking that action
         reward = self.getReward(self.state, nextState)
@@ -132,14 +147,19 @@ class QLearningAgent():
         self.qVals[state[0], state[1], action] = newQVal
 
     def getReward(self, state, nextState):
-        winZone = abs(nextState[0]) < 11 and abs(nextState[1]) < 11
-        aliveZone = (abs(nextState[0]) < abs(self.state[0])) or (abs(nextState[1]) < abs(self.state[1]))
 
-        if (winZone):
+        if nextState == 'closer':
             reward = 10
-        elif (aliveZone):
-            reward = 5
         else:
-            reward = -10
+            reward= -5
+        # winZone = abs(nextState[0]) < 11 and abs(nextState[1]) < 11
+        # aliveZone = (abs(nextState[0]) < abs(self.state[0])) or (abs(nextState[1]) < abs(self.state[1]))
+        #
+        # if (winZone):
+        #     reward = 10
+        # elif (aliveZone):
+        #     reward = 5
+        # else:
+        #     reward = -10
 
         return reward

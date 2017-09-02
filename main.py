@@ -10,7 +10,7 @@ clock = pygame.time.Clock()
 x=80
 y=80
 
-step = 0
+step = 1
 stalker = QLearningAgent()
 
 while not done:
