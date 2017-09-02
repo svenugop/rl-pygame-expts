@@ -39,13 +39,13 @@ class QLearningAgent():
 
 
         if (action == 'move-left'):
-            self.x -= 3
+            self.x -= 5
         elif (action == 'move-right'):
-            self.x += 3
+            self.x += 5
         elif (action == 'move-up'):
-            self.y -= 3
+            self.y -= 5
         elif (action == 'move-down'):
-            self.y += 3
+            self.y += 5
 
         nextTargetDistance = self.getPosition() - leaderPos
         # nextTargetDistance = math.fabs(nextTargetDistance[0])

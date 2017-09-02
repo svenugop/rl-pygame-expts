@@ -3,14 +3,14 @@ from QAgent import *
 import numpy as np
 
 pygame.init()
-screen = pygame.display.set_mode((400,300))
+screen = pygame.display.set_mode((1000,1000))
 done = False
 clock = pygame.time.Clock()
 
-x=80
-y=80
+x=200
+y=200
 
-step = 1
+step = 2
 stalker = QLearningAgent()
 
 while not done:
