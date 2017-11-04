@@ -27,7 +27,6 @@ class QLearningAgent():
         actions = self.getPossibleActions()
 
         currTargetDistance = self.getPosition() - leaderPos
-        # currTargetDistance = math.fabs(currTargetDistance[0])
         currTargetDistance = math.sqrt(currTargetDistance[0]*currTargetDistance[0] + currTargetDistance[1]*currTargetDistance[1])
         print "currTargetDistance = {}".format(currTargetDistance)
 
@@ -35,6 +34,8 @@ class QLearningAgent():
         if (util.flipCoin(self.epsilon)):
             action = random.choice(actions)
         else:
+            # @todo -- write another version of computeActionFromQValues that uses an FC layer in tensorflow to compute Q(s,a)
+            # @todo -- feed probably the frame as an input to a CNN layer to decide Q(s,a)
             action = self.computeActionFromQValues(self.state)
 
 
@@ -48,7 +49,6 @@ class QLearningAgent():
             self.y += 5
 
         nextTargetDistance = self.getPosition() - leaderPos
-        # nextTargetDistance = math.fabs(nextTargetDistance[0])
         nextTargetDistance = math.sqrt(nextTargetDistance[0]*nextTargetDistance[0] + nextTargetDistance[1]*nextTargetDistance[1])
         print "nextTargetDistance = {}".format(nextTargetDistance)
 
@@ -152,14 +152,5 @@ class QLearningAgent():
             reward = 10
         else:
             reward= -5
-        # winZone = abs(nextState[0]) < 11 and abs(nextState[1]) < 11
-        # aliveZone = (abs(nextState[0]) < abs(self.state[0])) or (abs(nextState[1]) < abs(self.state[1]))
-        #
-        # if (winZone):
-        #     reward = 10
-        # elif (aliveZone):
-        #     reward = 5
-        # else:
-        #     reward = -10
 
         return reward
