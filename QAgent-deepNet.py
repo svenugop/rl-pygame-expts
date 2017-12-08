@@ -11,8 +11,9 @@ class QLearningAgent():
 
         self.qVals = util.Counter()
 
-        # The state has 4 elements 'x-too-much-to-the-left', 'x-too-much-to-the-right', 'y-too-much-above', 'y-too-much-below'
         self.state = 'origin'
+
+        self.memory = ()
 
         self.discount = 0.05
         self.alpha = 0.7
@@ -93,23 +94,24 @@ class QLearningAgent():
           are no legal actions, which is the case at the terminal state,
           you should return None.
         """
+        action = 'move-right'
 
-        legalActions = self.getPossibleActions()
-        q_action_pair = []
+        # legalActions = self.getPossibleActions()
+        # q_action_pair = []
 
-        action = None
+        # action = None
 
-        if len(legalActions) > 0:
-            for lAction in legalActions:
-                qVal = self.getQValue(state, lAction)
-                q_action_pair.append((qVal, lAction))
+        # if len(legalActions) > 0:
+        #     for lAction in legalActions:
+        #         qVal = self.getQValue(state, lAction)
+        #         q_action_pair.append((qVal, lAction))
 
-            print(q_action_pair)
-            bestActions = [pair for pair in q_action_pair if pair == max(q_action_pair)]
-            # In case of tie, break it randomly
-            bestActionPair = random.choice(bestActions)
+        #     print(q_action_pair)
+        #     bestActions = [pair for pair in q_action_pair if pair == max(q_action_pair)]
+        #     # In case of tie, break it randomly
+        #     bestActionPair = random.choice(bestActions)
 
-            action = bestActionPair[1]
+        #     action = bestActionPair[1]
 
         return action
 
@@ -154,8 +156,68 @@ class QLearningAgent():
             reward= -5
 
         return reward
-    
-    def trainModel(self, gameState):
+
+    def updatePosition(self, leaderPos, gameScreenDims):
+
+        colorBGR = (255,128,0)
+        stalkerColorBGR = (0,128,255)
+
+        currState = np.zeros(gameScreenDims ,np.uint8)
+        x = leaderPos[0]
+        y = leaderPos[1]
+
+        ## Draw the leader rect
+        cv2.rectangle(currState,(x,y),(x+20,y+20), (255,128,0),-1)
+        ## Draw the stalker rect
+        (sx, sy) = stalker.getPosition()
+        cv2.rectangle(currState,(sx,sy),(sx+20,sy+20),stalkerColorBGR,-1)
+
+        self.state = currState
+
+        # Get all possible actions to take from this state
+        actions = self.getPossibleActions()
+
+        # With some randomness either choose a random action or the action that results in the maximum Q value (exploration vs. exploitation)
+        if (util.flipCoin(self.epsilon)):
+            action = random.choice(actions)
+        else:
+            # @todo -- write another version of computeActionFromQValues that uses an FC layer in tensorflow to compute Q(s,a)
+            # @todo -- feed the frame(?) as an input to a CNN layer to decide Q(s,a)
+            action = self.computeActionFromQValues(self.state)
+
+        if (action == 'move-left'):
+            self.x -= 5
+        elif (action == 'move-right'):
+            self.x += 5
+        elif (action == 'move-up'):
+            self.y -= 5
+        elif (action == 'move-down'):
+            self.y += 5
+
+
+        nextState = np.zeros(gameScreenDims ,np.uint8)
+        x = leaderPos[0]
+        y = leaderPos[1]
+
+        ## Draw the leader rect
+        cv2.rectangle(nextState,(x,y),(x+20,y+20), (255,128,0),-1)
+        ## Draw the stalker rect
+        (sx, sy) = stalker.getPosition()
+        cv2.rectangle(nextState,(sx,sy),(sx+20,sy+20),stalkerColorBGR,-1)
+        
+
+        # Compute reward for taking that action
+        reward = self.getReward('farther', 'closer')
+        # reward = self.getReward(self.state, nextState)
+        print("Received reward ", reward)
+
+        newMemoryElement = (currState, nextState, action, reward)
+        self.memory.append(newMemoryElement)
+
+        print self.memory
+
+
+    def runTrainingStep(self, memoryBuffer):
         pass
         # # Add the current game state to the replay memory buffer
         # replayBuffer.addToBuffer(gameState)

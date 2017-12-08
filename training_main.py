@@ -1,6 +1,6 @@
 import cv2
 import pygame
-from QAgent import *
+from QAgentDeepNet import *
 import numpy as np
 
 pygame.init()
@@ -30,31 +30,20 @@ while not done:
 
         screen.fill((0, 0, 0))
         color = (0,128,255)
-        colorBGR = (255,128,0)
         stalkerColor = (255,128,0)
-        stalkerColorBGR = (0,128,255)
 
         pygame.draw.rect(screen, color, pygame.Rect(x, y, 20, 20))
 
+        myPosition = np.array([x,y])
+        # The stalker's turn
+        stalker.updatePosition(myPosition, (1000,1000,3))
 
-        # Capture the game state (the rectangle along with both players);
-        # OR you can pass in to the training code -- the dimensions of the play area, the position of both players
-        currScreen = np.zeros((1000,1000,3),np.uint8)
-            
-        ## Draw the leader rect
-        cv2.rectangle(currScreen,(x,y),(x+20,y+20),colorBGR,-1)
-        ## Draw the stalker rect
+        # Run the training step
+        stalker.runTrainingStep()
+
         (sx, sy) = stalker.getPosition()
-        cv2.rectangle(currScreen,(sx,sy),(sx+20,sy+20),stalkerColorBGR,-1)
-
-        # Pass in the current state to the QAgent object (stalker) to use for training
         
-        # # Call stalker.trainModel
-
-        # stalker.train(currentState)
-        # (sx, sy) = stalker.getPosition()
         pygame.draw.rect(screen, stalkerColor, pygame.Rect(sx, sy, 20, 20))
 
         pygame.display.flip()
-
         clock.tick(60)
