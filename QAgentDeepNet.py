@@ -1,5 +1,6 @@
 import util
 import random
+import cv2
 import numpy as np
 import math
 
@@ -13,7 +14,7 @@ class QLearningAgent():
 
         self.state = 'origin'
 
-        self.memory = ()
+        self.memory = []
 
         self.discount = 0.05
         self.alpha = 0.7
@@ -160,7 +161,7 @@ class QLearningAgent():
     def updatePosition(self, leaderPos, gameScreenDims):
 
         colorBGR = (255,128,0)
-        stalkerColorBGR = (0,128,255)
+        selfColorBGR = (0,128,255)
 
         currState = np.zeros(gameScreenDims ,np.uint8)
         x = leaderPos[0]
@@ -168,9 +169,9 @@ class QLearningAgent():
 
         ## Draw the leader rect
         cv2.rectangle(currState,(x,y),(x+20,y+20), (255,128,0),-1)
-        ## Draw the stalker rect
-        (sx, sy) = stalker.getPosition()
-        cv2.rectangle(currState,(sx,sy),(sx+20,sy+20),stalkerColorBGR,-1)
+        ## Draw the self rect
+        (sx, sy) = self.getPosition()
+        cv2.rectangle(currState,(sx,sy),(sx+20,sy+20),selfColorBGR,-1)
 
         self.state = currState
 
@@ -201,23 +202,23 @@ class QLearningAgent():
 
         ## Draw the leader rect
         cv2.rectangle(nextState,(x,y),(x+20,y+20), (255,128,0),-1)
-        ## Draw the stalker rect
-        (sx, sy) = stalker.getPosition()
-        cv2.rectangle(nextState,(sx,sy),(sx+20,sy+20),stalkerColorBGR,-1)
+        ## Draw the self rect
+        (sx, sy) = self.getPosition()
+        cv2.rectangle(nextState,(sx,sy),(sx+20,sy+20),selfColorBGR,-1)
         
 
         # Compute reward for taking that action
         reward = self.getReward('farther', 'closer')
         # reward = self.getReward(self.state, nextState)
-        print("Received reward ", reward)
+        print "Received reward {}".format(reward)
 
         newMemoryElement = (currState, nextState, action, reward)
         self.memory.append(newMemoryElement)
 
-        print self.memory
+        print self.memory[-1][2]
 
 
-    def runTrainingStep(self, memoryBuffer):
+    def runTrainingStep(self):
         pass
         # # Add the current game state to the replay memory buffer
         # replayBuffer.addToBuffer(gameState)
