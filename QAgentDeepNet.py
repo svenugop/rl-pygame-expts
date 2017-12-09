@@ -91,11 +91,34 @@ class QLearningAgent():
 
     def computeActionFromQValues(self, state):
         """
-          Compute the best action to take in a state.  Note that if there
-          are no legal actions, which is the case at the terminal state,
-          you should return None.
+          Compute the best action to take in a state.
+          This function uses a neural network to approximate the Q(s,a) function 
         """
         action = 'move-right'
+
+        # The network will have an input layer --> a single convolutional layer --> followed by a FC layer (for classification)
+
+        # The input is an image of size 1000 x 1000
+        # @todo: consider resizing or cropping to reduce input dimension
+        # - the second argument is [batch_size (-1 if batch size to be dynamically computed, input_width, input_height, input_channels)]
+        input_layer = tf.reshape(state, [-1, 1000, 1000, 1])        
+
+        # Convolutional layer which applies 5 filters of kernel size 5x5
+        # -- padding = "same" so that the input is 0 padded on all sides to get an output of same size as input i.e. 1000x1000
+        conv1 = tf.layers.conv2d(inputs=input_layer,
+                                 filters=5,
+                                 kernel_size=[5, 5],
+                                 padding="same",
+                                 activation=tf.nn.relu)
+
+        # A max pooling layer to reduce the dimensions of the input to FC layer
+        pool1 = tf.layers.max_pooling2d(inputs=conv1, pool_size=[2, 2], strides=2)
+
+        
+        # An FC layer for classification
+
+
+
 
         # legalActions = self.getPossibleActions()
         # q_action_pair = []
@@ -216,6 +239,9 @@ class QLearningAgent():
         self.memory.append(newMemoryElement)
 
         print self.memory[-1][2]
+
+        cv2.imshow("Test", self.memory[-1][0])
+        cv2.waitKey()
 
 
     def runTrainingStep(self):
