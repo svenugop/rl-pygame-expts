@@ -89,7 +89,7 @@ class QLearningAgent():
 
         return actions
 
-    def computeActionFromQValues(self, state):
+    def computeActionFromQValues(self, state, mode):
         """
           Compute the best action to take in a state.
           This function uses a neural network to approximate the Q(s,a) function 
@@ -112,10 +112,56 @@ class QLearningAgent():
                                  activation=tf.nn.relu)
 
         # A max pooling layer to reduce the dimensions of the input to FC layer
-        pool1 = tf.layers.max_pooling2d(inputs=conv1, pool_size=[2, 2], strides=2)
+        pool1 = tf.layers.max_pooling2d(inputs=conv1, pool_size=[10, 10], strides=2)
 
         
         # An FC layer for classification
+        # -- the input will be a flattened version of the 2d output of the previous version
+        pool1_flat = tf.reshape(pool2, [-1, 100 * 100 * 5])
+
+        dense = tf.layers.dense(inputs=pool1_flat, units=1024, activation=tf.nn.relu)
+
+        dropout = tf.layers.dropout(inputs=dense, 
+                                    rate=0.4, 
+                                    training=mode == tf.estimator.ModeKeys.TRAIN)
+        # Logits Layer
+        # -- 4 outputs corresponding to each action
+        logits = tf.layers.dense(inputs=dropout, units=4)
+
+        # @todo: Return the logits or the softmax outputs from this function; handle argmax, loss and accuracy prediction outside this function
+
+        predictions = {
+            # Generate predictions (for PREDICT and EVAL mode)
+            "classes": tf.argmax(input=logits, axis=1),
+            # Add `softmax_tensor` to the graph. It is used for PREDICT and by the
+            # `logging_hook`.
+            "probabilities": tf.nn.softmax(logits, name="softmax_tensor")
+        }
+
+        # if predict mode, return prediction
+        if mode == tf.estimator.ModeKeys.PREDICT:
+            return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions)
+
+
+        # if TRAIN or EVAL mode do the following
+        # Calculate Loss (for both TRAIN and EVAL modes)
+        onehot_labels = tf.one_hot(indices=tf.cast(labels, tf.int32), depth=4)
+        loss = tf.losses.softmax_cross_entropy(onehot_labels=onehot_labels, logits=logits)
+
+        # Configure the Training Op (for TRAIN mode)
+        if mode == tf.estimator.ModeKeys.TRAIN:
+            optimizer = tf.train.GradientDescentOptimizer(learning_rate=0.001)
+            train_op = optimizer.minimize(loss=loss,
+                                          global_step=tf.train.get_global_step())
+            return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op)
+
+        # Add evaluation metrics (for EVAL mode)
+        eval_metric_ops = {
+            "accuracy": tf.metrics.accuracy(labels=labels, predictions=predictions["classes"])}
+
+        return tf.estimator.EstimatorSpec(mode=mode, 
+                                          loss=loss, 
+                                          eval_metric_ops=eval_metric_ops)
 
 
 
