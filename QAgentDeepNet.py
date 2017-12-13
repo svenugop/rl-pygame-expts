@@ -89,18 +89,13 @@ class QLearningAgent():
 
         return actions
 
-    def computeActionFromQValues(self, state, mode):
-        """
-          Compute the best action to take in a state.
-          This function uses a neural network to approximate the Q(s,a) function 
-        """
-        action = 'move-right'
-
+    def QNetwork(self, state):
         # The network will have an input layer --> a single convolutional layer --> followed by a FC layer (for classification)
 
         # The input is an image of size 1000 x 1000
         # @todo: consider resizing or cropping to reduce input dimension
         # - the second argument is [batch_size (-1 if batch size to be dynamically computed, input_width, input_height, input_channels)]
+        #   this allows us the option to pass in a 'batch' input during training and a single input during normal operation
         input_layer = tf.reshape(state, [-1, 1000, 1000, 1])        
 
         # Convolutional layer which applies 5 filters of kernel size 5x5
@@ -128,60 +123,23 @@ class QLearningAgent():
         # -- 4 outputs corresponding to each action
         logits = tf.layers.dense(inputs=dropout, units=4)
 
-        # @todo: Return the logits or the softmax outputs from this function; handle argmax, loss and accuracy prediction outside this function
+        return logits
 
-        predictions = {
-            # Generate predictions (for PREDICT and EVAL mode)
-            "classes": tf.argmax(input=logits, axis=1),
-            # Add `softmax_tensor` to the graph. It is used for PREDICT and by the
-            # `logging_hook`.
-            "probabilities": tf.nn.softmax(logits, name="softmax_tensor")
-        }
+    def computeActionFromQValues(self, state, mode):
+        """
+          Compute the best action to take in a state.
+          This function uses a neural network to approximate the Q(s,a) function 
+        """
+        legalActions = self.getPossibleActions()
 
-        # if predict mode, return prediction
-        if mode == tf.estimator.ModeKeys.PREDICT:
-            return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions)
+        # @todo: handle argmax, loss and accuracy prediction somewhere else?
+        logits = self.QNetwork(state)
 
+        max_index = tf.argmax(input=logits, axis=1),
+        action = legalActions[max_index]
 
-        # if TRAIN or EVAL mode do the following
-        # Calculate Loss (for both TRAIN and EVAL modes)
-        onehot_labels = tf.one_hot(indices=tf.cast(labels, tf.int32), depth=4)
-        loss = tf.losses.softmax_cross_entropy(onehot_labels=onehot_labels, logits=logits)
-
-        # Configure the Training Op (for TRAIN mode)
-        if mode == tf.estimator.ModeKeys.TRAIN:
-            optimizer = tf.train.GradientDescentOptimizer(learning_rate=0.001)
-            train_op = optimizer.minimize(loss=loss,
-                                          global_step=tf.train.get_global_step())
-            return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op)
-
-        # Add evaluation metrics (for EVAL mode)
-        eval_metric_ops = {
-            "accuracy": tf.metrics.accuracy(labels=labels, predictions=predictions["classes"])}
-
-        return tf.estimator.EstimatorSpec(mode=mode, 
-                                          loss=loss, 
-                                          eval_metric_ops=eval_metric_ops)
-
-
-
-
-        # legalActions = self.getPossibleActions()
-        # q_action_pair = []
-
-        # action = None
-
-        # if len(legalActions) > 0:
-        #     for lAction in legalActions:
-        #         qVal = self.getQValue(state, lAction)
-        #         q_action_pair.append((qVal, lAction))
-
-        #     print(q_action_pair)
-        #     bestActions = [pair for pair in q_action_pair if pair == max(q_action_pair)]
-        #     # In case of tie, break it randomly
-        #     bestActionPair = random.choice(bestActions)
-
-        #     action = bestActionPair[1]
+        action_probability = tf.nn.softmax(logits, name="softmax_tensor")
+        print "Chose action " + action + " with probability " + action_probability
 
         return action
 
@@ -292,7 +250,32 @@ class QLearningAgent():
 
     def runTrainingStep(self):
         pass
-        # # Add the current game state to the replay memory buffer
-        # replayBuffer.addToBuffer(gameState)
 
-        # replayBuffer.runTraining()
+        # @todo: Obtain a subset of states from the memory buffer
+        # states = 
+
+        # perform the training step by passing through the QNetwork and computing loss
+        logits = self.QNetwork(states)
+
+        # Calculate Loss (for both TRAIN and EVAL modes)
+        labels = getPossibleActions()
+
+        onehot_labels = tf.one_hot(indices=tf.cast(labels, tf.int32), depth=4)
+        loss = tf.losses.softmax_cross_entropy(onehot_labels=onehot_labels, logits=logits)
+
+        optimizer = tf.train.GradientDescentOptimizer(learning_rate=0.001)
+        train_op = optimizer.minimize(loss=loss,
+                                      global_step=tf.train.get_global_step())
+        
+        # @todo: run the training step within a session
+        return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op)
+
+        # # Add evaluation metrics (for EVAL mode)
+        # eval_metric_ops = {
+        #     "accuracy": tf.metrics.accuracy(labels=labels, predictions=predictions["classes"])}
+
+        # return tf.estimator.EstimatorSpec(mode=mode, 
+        #                                   loss=loss, 
+        #                                   eval_metric_ops=eval_metric_ops)
+
+        
