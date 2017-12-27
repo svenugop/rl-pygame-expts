@@ -4,6 +4,8 @@ import cv2
 import numpy as np
 import math
 
+NUM_TRAINING_ELEMENTS = 10
+
 class QLearningAgent():
 
     def __init__(self):
@@ -247,12 +249,19 @@ class QLearningAgent():
         cv2.imshow("Test", self.memory[-1][0])
         cv2.waitKey()
 
+        
+    def getRandomSubsetOfStates(self):
+        memSubset = self.memory
+        random.shuffle(memSubset)
+
+        # return the first N elements
+        return memSubset[0:NUM_TRAINING_ELEMENTS]
 
     def runTrainingStep(self):
         pass
 
         # @todo: Obtain a subset of states from the memory buffer
-        # states = 
+        states =  self.getRandomSubsetOfStates()
 
         # perform the training step by passing through the QNetwork and computing loss
         logits = self.QNetwork(states)
@@ -266,7 +275,13 @@ class QLearningAgent():
         optimizer = tf.train.GradientDescentOptimizer(learning_rate=0.001)
         train_op = optimizer.minimize(loss=loss,
                                       global_step=tf.train.get_global_step())
-        
+
+
+        init = tf.global_variable_initializer()
+        sess = tf.Session()
+        sess.run(init)
+        sess.run(train_op)
+
         # @todo: run the training step within a session
         return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op)
 
