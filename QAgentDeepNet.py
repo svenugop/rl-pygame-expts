@@ -3,6 +3,7 @@ import random
 import cv2
 import numpy as np
 import math
+import tensorflow as tf
 
 NUM_TRAINING_ELEMENTS = 10
 
@@ -92,6 +93,8 @@ class QLearningAgent():
         return actions
 
     def QNetwork(self, state):
+        pass
+
         # The network will have an input layer --> a single convolutional layer --> followed by a FC layer (for classification)
 
         # The input is an image of size 1000 x 1000
@@ -114,20 +117,25 @@ class QLearningAgent():
         
         # An FC layer for classification
         # -- the input will be a flattened version of the 2d output of the previous version
-        pool1_flat = tf.reshape(pool2, [-1, 100 * 100 * 5])
+        pool1_flat = tf.reshape(pool1, [-1, 100 * 100 * 5])
 
         dense = tf.layers.dense(inputs=pool1_flat, units=1024, activation=tf.nn.relu)
 
         dropout = tf.layers.dropout(inputs=dense, 
                                     rate=0.4, 
-                                    training=mode == tf.estimator.ModeKeys.TRAIN)
+                                    training=true)
+
+        # dropout = tf.layers.dropout(inputs=dense, 
+        #                             rate=0.4, 
+        #                             training= (mode == tf.estimator.ModeKeys.TRAIN))
+
         # Logits Layer
         # -- 4 outputs corresponding to each action
         logits = tf.layers.dense(inputs=dropout, units=4)
 
         return logits
 
-    def computeActionFromQValues(self, state, mode):
+    def computeActionFromQValues(self, state):
         """
           Compute the best action to take in a state.
           This function uses a neural network to approximate the Q(s,a) function 
@@ -192,7 +200,7 @@ class QLearningAgent():
         colorBGR = (255,128,0)
         selfColorBGR = (0,128,255)
 
-        currState = np.zeros(gameScreenDims ,np.uint8)
+        currState = np.zeros(gameScreenDims ,np.float32)
         x = leaderPos[0]
         y = leaderPos[1]
 
@@ -225,7 +233,7 @@ class QLearningAgent():
             self.y += 5
 
 
-        nextState = np.zeros(gameScreenDims ,np.uint8)
+        nextState = np.zeros(gameScreenDims ,np.float32)
         x = leaderPos[0]
         y = leaderPos[1]
 
@@ -244,22 +252,23 @@ class QLearningAgent():
         newMemoryElement = (currState, nextState, action, reward)
         self.memory.append(newMemoryElement)
 
-        print self.memory[-1][2]
-
-        cv2.imshow("Test", self.memory[-1][0])
-        cv2.waitKey()
+        # cv2.imshow("Test", self.memory[-1][0])
+        # cv2.waitKey()
 
         
     def getRandomSubsetOfStates(self):
-        memSubset = self.memory
+        memSubset = self.memory[:]
+
         random.shuffle(memSubset)
+        replayBufferLength = np.min([NUM_TRAINING_ELEMENTS, len(memSubset)])
 
         # return the first N elements
-        return memSubset[0:NUM_TRAINING_ELEMENTS]
+        memSubset = memSubset[0:replayBufferLength]
+
+        return memSubset
 
     def runTrainingStep(self):
-        pass
-
+        
         # @todo: Obtain a subset of states from the memory buffer
         states =  self.getRandomSubsetOfStates()
 
