@@ -36,7 +36,7 @@ while not done:
 
         myPosition = np.array([x,y])
         # The stalker's turn
-        stalker.updatePosition(myPosition, (1000,1000,3))
+        stalker.updatePosition(myPosition, (1000,1000,1))
 
         # Run the training step
         stalker.runTrainingStep()

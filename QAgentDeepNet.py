@@ -93,8 +93,6 @@ class QLearningAgent():
         return actions
 
     def QNetwork(self, state):
-        pass
-
         # The network will have an input layer --> a single convolutional layer --> followed by a FC layer (for classification)
 
         # The input is an image of size 1000 x 1000
@@ -117,13 +115,13 @@ class QLearningAgent():
         
         # An FC layer for classification
         # -- the input will be a flattened version of the 2d output of the previous version
-        pool1_flat = tf.reshape(pool1, [-1, 100 * 100 * 5])
+        pool1_flat = tf.reshape(pool1, [-1, 496 * 496 * 5])
 
         dense = tf.layers.dense(inputs=pool1_flat, units=1024, activation=tf.nn.relu)
 
         dropout = tf.layers.dropout(inputs=dense, 
                                     rate=0.4, 
-                                    training=true)
+                                    training=True)
 
         # dropout = tf.layers.dropout(inputs=dense, 
         #                             rate=0.4, 
@@ -146,7 +144,7 @@ class QLearningAgent():
         logits = self.QNetwork(state)
 
         max_index = tf.argmax(input=logits, axis=1),
-        action = legalActions[max_index]
+        action = legalActions[np.int32(max_index)]
 
         action_probability = tf.nn.softmax(logits, name="softmax_tensor")
         print "Chose action " + action + " with probability " + action_probability
@@ -197,18 +195,21 @@ class QLearningAgent():
 
     def updatePosition(self, leaderPos, gameScreenDims):
 
-        colorBGR = (255,128,0)
-        selfColorBGR = (0,128,255)
+        # colorBGR = (255,128,0)
+        # selfColorBGR = (0,128,255)
+
+        colorBGR = (255,255,255)
+        selfColorBGR = (100,100,100)
 
         currState = np.zeros(gameScreenDims ,np.float32)
         x = leaderPos[0]
         y = leaderPos[1]
 
         ## Draw the leader rect
-        cv2.rectangle(currState,(x,y),(x+20,y+20), (255,128,0),-1)
+        cv2.rectangle(currState,(x,y),(x+20,y+20), colorBGR, -1)
         ## Draw the self rect
         (sx, sy) = self.getPosition()
-        cv2.rectangle(currState,(sx,sy),(sx+20,sy+20),selfColorBGR,-1)
+        cv2.rectangle(currState,(sx,sy),(sx+20,sy+20),selfColorBGR, -1)
 
         self.state = currState
 
@@ -249,14 +250,15 @@ class QLearningAgent():
         # reward = self.getReward(self.state, nextState)
         print "Received reward {}".format(reward)
 
-        newMemoryElement = (currState, nextState, action, reward)
+        #newMemoryElement = (currState, nextState, action, reward)
+        newMemoryElement = (currState, action)
         self.memory.append(newMemoryElement)
 
         # cv2.imshow("Test", self.memory[-1][0])
         # cv2.waitKey()
 
         
-    def getRandomSubsetOfStates(self):
+    def getRandomReplayBuffer(self):
         memSubset = self.memory[:]
 
         random.shuffle(memSubset)
@@ -269,14 +271,18 @@ class QLearningAgent():
 
     def runTrainingStep(self):
         
-        # @todo: Obtain a subset of states from the memory buffer
-        states =  self.getRandomSubsetOfStates()
+        # @todo: Obtain a subset of samples from the memory buffer
+        samples =  self.getRandomReplayBuffer()
 
+        # Obtain the batch of states from samples
+        batch_of_states = [sample[0] for sample in samples]
+        batch_of_states = np.asarray(batch_of_states)
+        labels = [sample[1] for sample in samples]
+
+        
+        print "batch_of_states dims = {}".format(batch_of_states.shape[0])
         # perform the training step by passing through the QNetwork and computing loss
-        logits = self.QNetwork(states)
-
-        # Calculate Loss (for both TRAIN and EVAL modes)
-        labels = getPossibleActions()
+        logits = self.QNetwork(batch_of_states)
 
         onehot_labels = tf.one_hot(indices=tf.cast(labels, tf.int32), depth=4)
         loss = tf.losses.softmax_cross_entropy(onehot_labels=onehot_labels, logits=logits)
@@ -286,7 +292,7 @@ class QLearningAgent():
                                       global_step=tf.train.get_global_step())
 
 
-        init = tf.global_variable_initializer()
+        init = tf.global_variables_initializer()
         sess = tf.Session()
         sess.run(init)
         sess.run(train_op)
