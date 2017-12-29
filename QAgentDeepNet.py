@@ -141,21 +141,28 @@ class QLearningAgent():
         legalActions = self.getPossibleActions()
 
         # @todo: handle argmax, loss and accuracy prediction somewhere else?
-        init = tf.global_variables_initializer()
         logits = self.QNetwork(state)
         max_index = tf.argmax(input=logits, axis=1)
+        action_probability = tf.nn.softmax(logits, name="softmax_tensor")
+
+        init = tf.global_variables_initializer()
 
         action = []
 
+        print ""
+        print "** In computeActionFromQValues()** "
+        print ""
+
         with tf.Session() as sess:
-            init.run()
-            ind = max_index.eval()
+            sess.run(init)
+            ind = max_index.eval()[0]
+            action_probability.eval()
 
         print "max_index value = {}".format(ind)
         action = legalActions[ind]
-        action_probability = tf.nn.softmax(logits, name="softmax_tensor")
 
-        print "Chose action " + action + " with probability " + action_probability
+        print "Chose action {}".format(action)
+        # print action_probability
 
         return action
 
@@ -274,16 +281,6 @@ class QLearningAgent():
             self.y += 5
 
 
-        # nextState = np.zeros(gameScreenDims ,np.float32)
-        # x = leaderPos[0]
-        # y = leaderPos[1]
-
-        # ## Draw the leader rect
-        # cv2.rectangle(nextState,(x,y),(x+20,y+20), (255,128,0),-1)
-        # ## Draw the self rect
-        # (sx, sy) = self.getPosition()
-        # cv2.rectangle(nextState,(sx,sy),(sx+20,sy+20),selfColorBGR,-1)        
-
         # Compute reward for taking that action
         reward = self.getReward('farther', 'closer')
         # reward = self.getReward(self.state, nextState)
@@ -310,31 +307,49 @@ class QLearningAgent():
 
     def runTrainingStep(self):
         
-        # @todo: Obtain a subset of samples from the memory buffer
+        # Obtain a subset of samples from the memory buffer
         samples =  self.getRandomReplayBuffer()
 
         # Obtain the batch of states from samples
         batch_of_states = [sample[0] for sample in samples]
         batch_of_states = np.asarray(batch_of_states)
-        labels = [sample[1] for sample in samples]
 
-        
+        # Use integer labels so that we can do one hot encoding
+        labels = [];
+        for sample in samples:
+            if (sample[1] == 'move-left'):
+                labels.append(0)
+
+            if (sample[1] == 'move-right'):
+                labels.append(1)
+
+            if (sample[1] == 'move-up'):
+                labels.append(2)
+
+            if (sample[1] == 'move-down'):
+                labels.append(3)
+
+
+        print ""
+        print "** In runTrainingStep() ** "
+        print ""
         print "batch_of_states dims = {}".format(batch_of_states.shape[0])
         # perform the training step by passing through the QNetwork and computing loss
         logits = self.QNetwork(batch_of_states)
 
-        onehot_labels = tf.one_hot(indices=tf.cast(labels, tf.int32), depth=4)
+        # @todo: tensorflow needs the labels NOT in string format
+        onehot_labels = tf.one_hot(indices=labels, depth=4)
         loss = tf.losses.softmax_cross_entropy(onehot_labels=onehot_labels, logits=logits)
 
         optimizer = tf.train.GradientDescentOptimizer(learning_rate=0.001)
         train_op = optimizer.minimize(loss=loss,
                                       global_step=tf.train.get_global_step())
 
-
         init = tf.global_variables_initializer()
-        sess = tf.Session()
-        sess.run(init)
-        # sess.run(train_op)
+
+        with tf.Session() as sess:
+            sess.run(init)
+            sess.run(train_op)
 
         # # @todo: run the training step within a session
         # return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op)
