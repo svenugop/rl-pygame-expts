@@ -99,23 +99,23 @@ class QLearningAgent():
         # @todo: consider resizing or cropping to reduce input dimension
         # - the second argument is [batch_size (-1 if batch size to be dynamically computed, input_width, input_height, input_channels)]
         #   this allows us the option to pass in a 'batch' input during training and a single input during normal operation
-        input_layer = tf.reshape(state, [-1, 1000, 1000, 1])        
+        input_layer = tf.reshape(state, [-1, 50, 50, 1])        
 
         # Convolutional layer which applies 5 filters of kernel size 5x5
         # -- padding = "same" so that the input is 0 padded on all sides to get an output of same size as input i.e. 1000x1000
         conv1 = tf.layers.conv2d(inputs=input_layer,
                                  filters=5,
-                                 kernel_size=[5, 5],
+                                 kernel_size=[3, 3],
                                  padding="same",
                                  activation=tf.nn.relu)
 
         # A max pooling layer to reduce the dimensions of the input to FC layer
-        pool1 = tf.layers.max_pooling2d(inputs=conv1, pool_size=[10, 10], strides=2)
+        pool1 = tf.layers.max_pooling2d(inputs=conv1, pool_size=[5, 5], strides=2)
 
         
         # An FC layer for classification
         # -- the input will be a flattened version of the 2d output of the previous version
-        pool1_flat = tf.reshape(pool1, [-1, 496 * 496 * 5])
+        pool1_flat = tf.reshape(pool1, [-1, 23 * 23 * 5])
 
         dense = tf.layers.dense(inputs=pool1_flat, units=1024, activation=tf.nn.relu)
 
@@ -141,12 +141,20 @@ class QLearningAgent():
         legalActions = self.getPossibleActions()
 
         # @todo: handle argmax, loss and accuracy prediction somewhere else?
+        init = tf.global_variables_initializer()
         logits = self.QNetwork(state)
+        max_index = tf.argmax(input=logits, axis=1)
 
-        max_index = tf.argmax(input=logits, axis=1),
-        action = legalActions[np.int32(max_index)]
+        action = []
 
+        with tf.Session() as sess:
+            init.run()
+            ind = max_index.eval()
+
+        print "max_index value = {}".format(ind)
+        action = legalActions[ind]
         action_probability = tf.nn.softmax(logits, name="softmax_tensor")
+
         print "Chose action " + action + " with probability " + action_probability
 
         return action
@@ -193,24 +201,56 @@ class QLearningAgent():
 
         return reward
 
-    def updatePosition(self, leaderPos, gameScreenDims):
+    def getCurrentStateAsImage(self,x,y,sx,sy):
 
-        # colorBGR = (255,128,0)
-        # selfColorBGR = (0,128,255)
+        colorBGR = (255,255,255)
+        selfColorBGR = (100,100,100)
+        
+        lx = 25
+        ly = 25
+        w = 5
+        d = 15
+
+        currState = np.zeros((50,50,1) ,np.float32)
+        cv2.rectangle(currState,(lx,ly),(lx+w,ly+w), colorBGR, -1)
+
+        x1 = lx
+        y1 = ly
+
+        if (sx < x):
+            x1 = lx - d
+        elif (sx > x):
+            x1 = lx + d
+
+            
+        if (sy < y):
+            y1 = ly - d
+        elif(sy > y):
+            y1 = ly + d
+
+        cv2.rectangle(currState,(x1,y1),(x1+w,y1+w), selfColorBGR, -1)
+
+        return currState
+
+        
+    def updatePosition(self, leaderPos, gameScreenDims):
 
         colorBGR = (255,255,255)
         selfColorBGR = (100,100,100)
 
-        currState = np.zeros(gameScreenDims ,np.float32)
         x = leaderPos[0]
         y = leaderPos[1]
 
-        ## Draw the leader rect
-        cv2.rectangle(currState,(x,y),(x+20,y+20), colorBGR, -1)
-        ## Draw the self rect
         (sx, sy) = self.getPosition()
-        cv2.rectangle(currState,(sx,sy),(sx+20,sy+20),selfColorBGR, -1)
 
+        # ## Draw the leader rect
+        # cv2.rectangle(currState,(x,y),(x+20,y+20), colorBGR, -1)
+        # ## Draw the self rect
+        # cv2.rectangle(currState,(sx,sy),(sx+20,sy+20),selfColorBGR, -1)
+
+        # Calling getCurrentStateAsImage() as a stop-gap instead of passing in the original image
+        # -- passing in the original image causes GPU to run out of memory
+        currState = self.getCurrentStateAsImage(x,y,sx,sy)
         self.state = currState
 
         # Get all possible actions to take from this state
@@ -234,16 +274,15 @@ class QLearningAgent():
             self.y += 5
 
 
-        nextState = np.zeros(gameScreenDims ,np.float32)
-        x = leaderPos[0]
-        y = leaderPos[1]
+        # nextState = np.zeros(gameScreenDims ,np.float32)
+        # x = leaderPos[0]
+        # y = leaderPos[1]
 
-        ## Draw the leader rect
-        cv2.rectangle(nextState,(x,y),(x+20,y+20), (255,128,0),-1)
-        ## Draw the self rect
-        (sx, sy) = self.getPosition()
-        cv2.rectangle(nextState,(sx,sy),(sx+20,sy+20),selfColorBGR,-1)
-        
+        # ## Draw the leader rect
+        # cv2.rectangle(nextState,(x,y),(x+20,y+20), (255,128,0),-1)
+        # ## Draw the self rect
+        # (sx, sy) = self.getPosition()
+        # cv2.rectangle(nextState,(sx,sy),(sx+20,sy+20),selfColorBGR,-1)        
 
         # Compute reward for taking that action
         reward = self.getReward('farther', 'closer')
@@ -295,10 +334,10 @@ class QLearningAgent():
         init = tf.global_variables_initializer()
         sess = tf.Session()
         sess.run(init)
-        sess.run(train_op)
+        # sess.run(train_op)
 
-        # @todo: run the training step within a session
-        return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op)
+        # # @todo: run the training step within a session
+        # return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op)
 
         # # Add evaluation metrics (for EVAL mode)
         # eval_metric_ops = {
